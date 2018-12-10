@@ -3,8 +3,6 @@
 * Starter code provided by Patricio Simari
 */
 
-
-
 // renderer
 var renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -15,20 +13,12 @@ document.body.appendChild(renderer.domElement);
 // create a scene
 var scene = new THREE.Scene();
 
-// show axes
-var axesHelper = new THREE.AxesHelper(10);
-scene.add(axesHelper);
-
-// ground plane grid
-var gridHelper = new THREE.GridHelper(10, 10);
-scene.add(gridHelper);
-
 // camera
 var aspect = window.innerWidth/window.innerHeight;
 var camera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
 camera.position.set(36.0, 20.0, 0);
 
-// audio listener
+// audio listener for bowling sound
 var listener = new THREE.AudioListener();
 camera.add(listener);
 var sound = new THREE.Audio(listener);
@@ -36,7 +26,7 @@ var audioLoader = new THREE.AudioLoader();
 
 // base
 var base_geometry = new THREE.BoxGeometry(44, 1.25, 8);
-//var base_material = new THREE.MeshPhongMaterial();
+// the lane texture png file is loaded onto the bowlign lane or 'base'
 var base_texture = new THREE.TextureLoader().load( 'threejs/lane_texture.png' );
 var base_material = new THREE.MeshBasicMaterial({map: base_texture});
 base_material.color = new THREE.Color(182.0/255.0, 155.0/255.0, 76.0/255.0);
@@ -46,7 +36,7 @@ scene.add(base_mesh);
 
 // base 2
 var base2_geometry = new THREE.BoxGeometry(44,1.25, 8);
-//var base2_material = new THREE.MeshPhongMaterial();
+// same png that was loaded for the first lane is used here for the 2nd
 var base2_material = new THREE.MeshBasicMaterial({map: base_texture});
 base2_material.color = new THREE.Color(182.0/255.0, 155.0/255.0, 76.0/255.0);
 var base2_mesh = new THREE.Mesh(base2_geometry, base2_material);
@@ -56,7 +46,7 @@ scene.add(base2_mesh);
 
 // base 3
 var base3_geometry = new THREE.BoxGeometry(44,1.25, 8);
-//var base3_material = new THREE.MeshPhongMaterial();
+// 3rd use of the lane png
 var base3_material = new THREE.MeshBasicMaterial({map: base_texture});
 base3_material.color = new THREE.Color(182.0/255.0, 155.0/255.0, 76.0/255.0);
 var base3_mesh = new THREE.Mesh(base3_geometry, base3_material);
@@ -66,10 +56,8 @@ scene.add(base3_mesh);
 
 // back wall
  var wall_geometry = new THREE.BoxGeometry(2.0, 20.0, 40.0);
- //var wall_material = new THREE.MeshPhongMaterial();
  var wall_texture = new THREE.TextureLoader().load( 'threejs/neon_wall_texture.png' );
  var wall_material = new THREE.MeshBasicMaterial({map: wall_texture});
- //wall_material.color = new THREE.Color(148/255, 0.0, 211/255);
  var wall_mesh = new THREE.Mesh(wall_geometry, wall_material);
  wall_mesh.position.x = -22;
  wall_mesh.position.y = 8;
@@ -87,14 +75,14 @@ scene.add(base3_mesh);
   scene.add(sWall_mesh);
 
   // side wall 2
-   var sWall2_geometry = new THREE.BoxGeometry(44.0, 20.0, 2.0);
-   var sWall2_material = new THREE.MeshPhongMaterial();
-   sWall2_material.color = new THREE.Color(182.0/255.0, 155.0/255.0, 76.0/255.0);
-   var sWall2_mesh = new THREE.Mesh(sWall2_geometry, sWall2_material);
-   sWall2_mesh.position.x = 0;
-   sWall2_mesh.position.y = 8;
-   sWall2_mesh.position.z = -21;
-   scene.add(sWall2_mesh);
+var sWall2_geometry = new THREE.BoxGeometry(44.0, 20.0, 2.0);
+var sWall2_material = new THREE.MeshPhongMaterial();
+sWall2_material.color = new THREE.Color(182.0/255.0, 155.0/255.0, 76.0/255.0);
+var sWall2_mesh = new THREE.Mesh(sWall2_geometry, sWall2_material);
+sWall2_mesh.position.x = 0;
+sWall2_mesh.position.y = 8;
+sWall2_mesh.position.z = -21;
+scene.add(sWall2_mesh);
 
 // pin drop
 var pinDrop_geometry = new THREE.BoxGeometry(6.0, 6.0, 40.0);
@@ -349,7 +337,8 @@ h.add(light_point,   "intensity", 0.0, 1.0, 0.1).name("Point Light Intensity");
 // controls
 var controls = new THREE.OrbitControls(camera, renderer.domElement);
 
-// generate scene elements
+// generate scene elements including the bowling ball
+// as well as the pins in the center row
 var ball = makeBall();
 scene.add(ball);
 ball.position.x = 18.0;
@@ -394,14 +383,16 @@ pin6.position.z = -1.6;
 
 // keep track of ball's velocity (meters per second)
 var ball_velocity = new THREE.Vector3(-18.0, 0.0, 0.0);
+
+// Depending on whether the pin flies straight backwards
+// or skewed left or right, the appropriate velocity is added
 var pin_velocity = new THREE.Vector3(-40.0, 0.0, 0.0);
 var pin_velocity_skewed_left = new THREE.Vector3(-36.0, 0.0, 5.0);
 var pin_velocity_skewed_right = new THREE.Vector3(-36.0, 0.0, -5.0);
 
-// set gravity to 9.8 meters/second^2 in -y direction
+// set gravity and the speed the pins rotate when struck
 var gravity = new THREE.Vector3(0.0, -29.4, 0.0);
 var friction = new THREE.Vector3(5.0, 0.0, 0.0);
-
 var spinVal = 6;
 
 
@@ -417,27 +408,19 @@ function animate() {
   // put this function in queue for another frame after this one
   requestAnimationFrame(animate);
 
-
-
   // get delta time: seconds passed since last frame
   dt = clock.getDelta();
 
   // update ball position according to velocity and dt
   ball.position.addScaledVector(ball_velocity, dt);
 
-  // update ball velocity according to gravity
-  //ball_velocity.addScaledVector(gravity, dt);
-
   // will hold bounce correction on collision
   var bounce_dist;
 
-  // bounce off floor: z = 0 plane
-  // if ((ball.position.y - 1.0 < 0.0) && (ball_velocity.y < 0)) {
-  //         bounce_dist = 1.0 - ball.position.y;
-  //         ball.position.y += 2.0*bounce_dist;
-  //         ball_velocity.y = 0;;
-  // }
 
+  // Right before the bowling ball hits the pins, the sound effect
+  // is loaded in. It is slightly delaye, so by putting it alightly ahead
+  // it times up with the animation
   if(ball.position.x - 1.25 < -1.75 && ball.position.x >= -20.35)
   {
     audioLoader.load( 'threejs/bowling2.mp3', function( buffer ) {
@@ -467,6 +450,7 @@ function animate() {
     pin3.rotation.z += spinVal;
   }
 
+  // Second row of pins have hit the third row, send third row flying
   if(pin2.position.x < -10 )
   {
     pin4.position.addScaledVector(pin_velocity_skewed_left, dt);
@@ -478,6 +462,9 @@ function animate() {
     pin6.rotation.z += spinVal;
   }
 
+  // When the pins hit the back wall, fall straight downward. This is an
+  // approximation as the first pin will hit before the others but they
+  // all obey gravity at the same time
   if(pin.position.x < -18.5)
   {
     pin_velocity.x = 0;
@@ -492,6 +479,7 @@ function animate() {
     pin_velocity_skewed_right.addScaledVector(gravity, dt);
   }
 
+  // When the bowling ball hits the back wall it falls downward
   if(ball.position.x < -15.5)
   {
     ball_velocity.x = -5;
@@ -526,11 +514,15 @@ function makeBall() {
 }
 
 function makePin() {
+
+  // create cylider geometry
   var geometry = new THREE.CylinderGeometry(0.5, 0.5, 2, 32);
 
+  // create material
   var material = new THREE.MeshPhongMaterial();
   material.color = new THREE.Color(112.0/255.0, 128.0/255.0, 144.0/255.0);
 
+  // create mesh
   var mesh = new THREE.Mesh(geometry, material);
 
   return mesh;
